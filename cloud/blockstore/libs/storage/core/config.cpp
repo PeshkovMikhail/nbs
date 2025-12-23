@@ -650,6 +650,7 @@ NProto::TLinkedDiskFillBandwidth GetBandwidth(
         NProto::NONREPL_ALLOC_POLICY_NOT_SPECIFIED                            )\
                                                                                \
     xxx(SendLocalTabletMetricsToHiveEnabled,  bool,        false              )\
+    xxx(CompareDiskRegistryStateWithLocalDbInterval, TDuration, Hours(4)      )\
 
 // BLOCKSTORE_STORAGE_CONFIG_RW
 

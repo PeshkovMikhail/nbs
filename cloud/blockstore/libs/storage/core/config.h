@@ -745,6 +745,8 @@ public:
     [[nodiscard]] NProto::ENonreplAllocationPolicy GetNonreplAllocationPolicy() const;
 
     [[nodiscard]] bool GetSendLocalTabletMetricsToHiveEnabled() const;
+
+    [[nodiscard]] TDuration GetCompareDiskRegistryStateWithLocalDbInterval() const;
 };
 
 ui64 GetAllocationUnit(

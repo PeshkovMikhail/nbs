@@ -32,7 +32,34 @@ void TDiskRegistryActor::HandleCompareDiskRegistryStateWithLocalDb(
             TEvDiskRegistry::TCompareDiskRegistryStateWithLocalDbMethod>(
             ev->Sender,
             ev->Cookie,
-            ev->Get()->CallContext));
+            ev->Get()->CallContext),
+        false);
+}
+
+void TDiskRegistryActor::HandleScheduledCompareDiskRegistryStateWithLocalDb(
+    const TEvDiskRegistryPrivate::TEvCompareDiskRegistryStateWithLocalDb::TPtr&
+        ev,
+    const TActorContext& ctx)
+{
+    ExecuteTx<TCompareDiskRegistryStateWithLocalDb>(
+        ctx,
+        CreateRequestInfo<
+            TEvDiskRegistry::TCompareDiskRegistryStateWithLocalDbMethod>(
+            ev->Sender,
+            ev->Cookie,
+            ev->Get()->CallContext),
+        true);
+}
+
+void TDiskRegistryActor::
+    HandleScheduledCompareDiskRegistryStateWithLocalDbReadOnly(
+        const TEvDiskRegistryPrivate::TEvCompareDiskRegistryStateWithLocalDb::
+            TPtr& ev,
+        const TActorContext& ctx)
+{
+    Y_UNUSED(ev);
+
+    ScheduleCompareDiskRegistryStateWithLocalDb(ctx);
 }
 
 bool TDiskRegistryActor::PrepareCompareDiskRegistryStateWithLocalDb(
@@ -105,11 +132,20 @@ void TDiskRegistryActor::CompleteCompareDiskRegistryStateWithLocalDb(
         LogTitle.GetWithTime().c_str(),
         args.Result.ShortDebugString().c_str());
 
-    auto response = std::make_unique<
-        TEvDiskRegistry::TEvCompareDiskRegistryStateWithLocalDbResponse>(
-        std::move(args.Result));
+    if (!args.Result.GetDiffers().empty()) {
+        ReportDiskRegistryStateMismatchedLocalDb(args.Result.GetDiffers());
+    }
 
-    NCloud::Reply(ctx, *args.RequestInfo, std::move(response));
+    if (!args.Scheduled) {
+        auto response = std::make_unique<
+            TEvDiskRegistry::TEvCompareDiskRegistryStateWithLocalDbResponse>(
+            std::move(args.Result));
+
+        NCloud::Reply(ctx, *args.RequestInfo, std::move(response));
+        return;
+    }
+
+    ScheduleCompareDiskRegistryStateWithLocalDb(ctx);
 }
 
 }   // namespace NCloud::NBlockStore::NStorage
