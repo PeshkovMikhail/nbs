@@ -26,7 +26,7 @@ void TDiskRegistryActor::HandleBackupDiskRegistryState(
         TransactionTimeTracker.GetInflightInfo(GetCycleCount()).c_str());
     
     NProto::TBackupDiskRegistryStateResponse record;
-    if (msg->Record.GetSource() != NProto::EBackupDiskRegistryStateSource::LOCAL_DB) {
+    if (msg->Record.GetSource() == NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_RAM) {
 
         *record.MutableBackupFilePath() =
             msg->Record.GetBackupFilePath();
@@ -35,13 +35,11 @@ void TDiskRegistryActor::HandleBackupDiskRegistryState(
         record.MutableRamBackup()->MutableConfig()
             ->SetWritableState(CurrentState != STATE_READ_ONLY);
 
-        if(msg->Record.GetSource() == NProto::EBackupDiskRegistryStateSource::RAM){
-            auto response = std::make_unique<
-                TEvDiskRegistry::TEvBackupDiskRegistryStateResponse>();
-            response->Record = std::move(record);
-            NCloud::Reply(ctx, *ev, std::move(response));
-            return;
-        }
+        auto response = std::make_unique<
+            TEvDiskRegistry::TEvBackupDiskRegistryStateResponse>();
+        response->Record = std::move(record);
+        NCloud::Reply(ctx, *ev, std::move(response));
+        return;
     }
 
     auto requestInfo = CreateRequestInfo(
@@ -53,7 +51,7 @@ void TDiskRegistryActor::HandleBackupDiskRegistryState(
         ctx,
         std::move(requestInfo),
         msg->Record.GetBackupFilePath(),
-        record);
+        msg->Record.GetSource());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,6 +62,11 @@ bool TDiskRegistryActor::PrepareBackupDiskRegistryState(
     TTxDiskRegistry::TBackupDiskRegistryState& args)
 {
     Y_UNUSED(ctx);
+
+    if(args.Source == NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_BOTH)
+    {
+        args.RamSnapshot = State->BackupState();
+    }
 
     TDiskRegistryDatabase db(tx.DB);
     return LoadState(db, args.Snapshot);
@@ -87,8 +90,12 @@ void TDiskRegistryActor::CompleteBackupDiskRegistryState(
 {
     auto response = std::make_unique<
         TEvDiskRegistry::TEvBackupDiskRegistryStateResponse>();
+    
+    if(args.Source == NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_BOTH)
+    {
+        *response->Record.MutableRamBackup() = std::move(args.RamSnapshot);
+    }
 
-    response->Record = std::move(args.Response);
     *response->Record.MutableBackupFilePath() = args.BackupFilePath;
 
     // if new fields are added to TDiskRegistryStateSnapshot

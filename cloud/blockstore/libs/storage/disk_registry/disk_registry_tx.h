@@ -63,7 +63,6 @@ namespace NCloud::NBlockStore::NStorage {
     xxx(PurgeHostCms,                       __VA_ARGS__)                       \
     xxx(RemoveOrphanDevices,                __VA_ARGS__)                       \
     xxx(AddOutdatedLaggingDevices,          __VA_ARGS__)                       \
-    xxx(CompareDiskRegistryStateWithLocalDb,           __VA_ARGS__)                       \
 // BLOCKSTORE_DISK_REGISTRY_TRANSACTIONS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -861,16 +860,17 @@ struct TTxDiskRegistry
         : TLoadState
     {
         const TString BackupFilePath;
-        NProto::TBackupDiskRegistryStateResponse Response;
+        NProto::EBackupDiskRegistryStateSource Source;
+        NProto::TDiskRegistryStateBackup RamSnapshot;
 
         TBackupDiskRegistryState() = default;
         TBackupDiskRegistryState(
                 TRequestInfoPtr requestInfo,
                 TString backupFilePath,
-                NProto::TBackupDiskRegistryStateResponse response)
+                NProto::EBackupDiskRegistryStateSource source)
             : TLoadState{std::move(requestInfo)}
             , BackupFilePath{std::move(backupFilePath)}
-            , Response{std::move(response)}
+            , Source{source}
         {}
     };
 
@@ -1481,24 +1481,6 @@ struct TTxDiskRegistry
         void Clear()
         {
             Error.Clear();
-        }
-    };
-
-    struct TCompareDiskRegistryStateWithLocalDb
-    {
-        const TRequestInfoPtr RequestInfo;
-
-        NProto::TCompareDiskRegistryStateWithLocalDbResponse Result;
-        TDiskRegistryStateSnapshot StateArgs;
-
-        TCompareDiskRegistryStateWithLocalDb(
-                TRequestInfoPtr requestInfo)
-            : RequestInfo(std::move(requestInfo))
-        {}
-
-        void Clear()
-        {
-            Result.Clear();
         }
     };
 };

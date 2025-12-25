@@ -440,10 +440,10 @@ Y_UNIT_TEST_SUITE(TDiskRegistryTest)
             NProto::TDiskRegistryStateBackup backup;
             auto response = diskRegistry.BackupDiskRegistryState(source);
             switch (source) {
-                case NProto::LOCAL_DB:
+                case NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_LOCAL_DB:
                     backup.Swap(response->Record.MutableLocalDbBackup());
                     break;
-                case NProto::RAM:
+                case NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_RAM:
                     backup.Swap(response->Record.MutableRamBackup());
                     break;
                 default:
@@ -499,8 +499,8 @@ Y_UNIT_TEST_SUITE(TDiskRegistryTest)
             UNIT_ASSERT_VALUES_EQUAL_C("agent-3", knownAgents[2].GetAgentId(), name);
         };
 
-        auto backupState = makeBackup(NProto::RAM);
-        auto backupDB = makeBackup(NProto::LOCAL_DB);
+        auto backupState = makeBackup(NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_RAM);
+        auto backupDB = makeBackup(NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_LOCAL_DB);
 
         validate(backupState, "state backup");
         validate(backupDB, "local DB backup");

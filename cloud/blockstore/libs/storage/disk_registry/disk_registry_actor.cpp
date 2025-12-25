@@ -95,7 +95,7 @@ void TDiskRegistryActor::ScheduleMakeBackup(
     }
     auto request =
         std::make_unique<TEvDiskRegistry::TEvBackupDiskRegistryStateRequest>();
-    request->Record.SetSource(NProto::EBackupDiskRegistryStateSource::LOCAL_DB);
+    request->Record.SetSource(NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_LOCAL_DB);
     request->Record.SetBackupFilePath(TStringBuilder()
         << backupDirPath << "/" + hostPrefix << FormatIsoLocal(ctx.Now()) << ".json");
 

@@ -229,11 +229,11 @@ Y_UNIT_TEST_SUITE(TDiskRegistryTest)
 
         auto checkState = [&] (auto func) {
             // check local DB
-            func(true, diskRegistry.BackupDiskRegistryState(NProto::LOCAL_DB)
+            func(true, diskRegistry.BackupDiskRegistryState(NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_LOCAL_DB)
                 ->Record.GetLocalDbBackup());
 
             // check dyn state
-            func(false, diskRegistry.BackupDiskRegistryState(NProto::RAM)
+            func(false, diskRegistry.BackupDiskRegistryState(NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_RAM)
                 ->Record.GetRamBackup());
         };
 

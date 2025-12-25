@@ -1349,9 +1349,9 @@ message TFinishMigrationResponse
 
 enum EBackupDiskRegistryStateSource
 {
-    RAM = 0;
-    LOCAL_DB = 1;
-    BOTH = 2;
+    BACKUP_DISK_REGISTRY_STATE_SOURCE_RAM = 0;
+    BACKUP_DISK_REGISTRY_STATE_SOURCE_LOCAL_DB = 1;
+    BACKUP_DISK_REGISTRY_STATE_SOURCE_BOTH = 2;
 }
 message TBackupDiskRegistryStateRequest
 {   

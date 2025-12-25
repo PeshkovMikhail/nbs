@@ -9,6 +9,8 @@ using namespace NKikimr::NTabletFlatExecutor;
 
 namespace {
 
+////////////////////////////////////////////////////////////////////////////////
+
 class TCompareActor final: public TActorBootstrapped<TCompareActor>
 {
 private:
@@ -16,6 +18,7 @@ private:
     const TActorId Owner;
     TRequestInfoPtr RequestInfo;
 
+    TString DiffReport;
 public:
     TCompareActor(
         TChildLogTitle logTitle,
@@ -27,10 +30,14 @@ public:
 private:
     void ReplyAndDie(
         const TActorContext& ctx,
-        NProto::TCompareDiskRegistryStateWithLocalDbResponse& responseProto);
+        const NProto::TError& error);
 
 private:
     STFUNC(StateCompare);
+
+    void HandlePoisonPill(
+        const TEvents::TEvPoisonPill::TPtr& ev,
+        const TActorContext& ctx);
 
     void HandleBackupDiskRegistryStateResponse(
         const TEvDiskRegistry::TEvBackupDiskRegistryStateResponse::TPtr& ev,
@@ -52,23 +59,35 @@ void TCompareActor::Bootstrap(const TActorContext& ctx)
 
     auto request =
         std::make_unique<TEvDiskRegistry::TEvBackupDiskRegistryStateRequest>();
-    request->Record.SetSource(NProto::EBackupDiskRegistryStateSource::BOTH);
+    request->Record.SetSource(NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_BOTH);
 
     NCloud::Send(ctx, Owner, std::move(request));
 }
 
 void TCompareActor::ReplyAndDie(
     const TActorContext& ctx,
-    NProto::TCompareDiskRegistryStateWithLocalDbResponse& responseProto)
+    const NProto::TError& error)
 {
     auto response = std::make_unique<
         TEvDiskRegistry::TEvCompareDiskRegistryStateWithLocalDbResponse>(
-        responseProto);
+        error);
+
+    response->Record.SetDiffers(DiffReport);
+    
     NCloud::Reply(ctx, *RequestInfo, std::move(response));
     Die(ctx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+void TCompareActor::HandlePoisonPill(
+    const TEvents::TEvPoisonPill::TPtr& ev,
+    const TActorContext& ctx)
+{
+    Y_UNUSED(ev);
+
+    ReplyAndDie(ctx, MakeTabletIsDeadError(E_REJECTED, __LOCATION__));
+}
 
 void TCompareActor::HandleBackupDiskRegistryStateResponse(
     const TEvDiskRegistry::TEvBackupDiskRegistryStateResponse::TPtr& ev,
@@ -76,11 +95,9 @@ void TCompareActor::HandleBackupDiskRegistryStateResponse(
 {
     const auto* msg = ev->Get();
 
-    NProto::TCompareDiskRegistryStateWithLocalDbResponse response;
-
     google::protobuf::util::MessageDifferencer diff;
 
-    diff.ReportDifferencesToString(response.MutableDiffers());
+    diff.ReportDifferencesToString(&DiffReport);
     google::protobuf::util::DefaultFieldComparator comparator;
     comparator.set_float_comparison(
         google::protobuf::util::DefaultFieldComparator::FloatComparison::
@@ -92,24 +109,25 @@ void TCompareActor::HandleBackupDiskRegistryStateResponse(
 
     diff.Compare(msg->Record.GetRamBackup(), msg->Record.GetLocalDbBackup());
 
-    auto report = response.GetDiffers();
-
     LOG_INFO(
         ctx,
         TBlockStoreComponents::DISK_REGISTRY,
         "%s CompareDiskRegistryStateWithLocalDb result: %s",
         LogTitle.GetWithTime().c_str(),
-        report.empty() ? "OK" : report.c_str());
+        DiffReport.empty() ? "OK" : DiffReport.c_str());
 
-    ReplyAndDie(ctx, response);
+    ReplyAndDie(ctx, {});
 }
 
 STFUNC(TCompareActor::StateCompare)
 {
     switch (ev->GetTypeRewrite()) {
+        HFunc(TEvents::TEvPoisonPill, HandlePoisonPill);
+
         HFunc(
             TEvDiskRegistry::TEvBackupDiskRegistryStateResponse,
             HandleBackupDiskRegistryStateResponse);
+
         default:
             HandleUnexpectedEvent(
                 ev,

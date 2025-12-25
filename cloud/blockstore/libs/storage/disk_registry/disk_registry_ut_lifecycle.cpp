@@ -194,6 +194,22 @@ Y_UNIT_TEST_SUITE(TDiskRegistryTest)
             auto result = diskRegistry.CompareDiskRegistryStateWithLocalDb();
             UNIT_ASSERT(result->Record.differs() == "");
         }
+
+        runtime->SetObserverFunc(
+            [&](TAutoPtr<IEventHandle>& event)
+            {
+                if (event->GetTypeRewrite() == TEvDiskRegistry::EvBackupDiskRegistryStateResponse) {
+                    auto& record = event->Get<TEvDiskRegistry::TEvBackupDiskRegistryStateResponse>()->Record;
+                    auto& diskStateUpdate = record.MutableRamBackup()->MutableDiskStateChanges()->at(0);
+                    diskStateUpdate.SetSeqNo(diskStateUpdate.GetSeqNo()+1);
+                }
+                return TTestActorRuntime::DefaultObserverFunc(event);
+            });
+        
+        {
+            auto result = diskRegistry.CompareDiskRegistryStateWithLocalDb();
+            UNIT_ASSERT(result->Record.differs() != "");
+        }
     }
 
     Y_UNIT_TEST(ShouldCleanupMirroredDisks)

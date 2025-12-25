@@ -30,7 +30,7 @@ namespace {
 auto GetBackup(TDiskRegistryClient& dr)
     -> NProto::TDiskRegistryStateBackup
 {
-    auto response = dr.BackupDiskRegistryState(NProto::RAM);
+    auto response = dr.BackupDiskRegistryState(NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_RAM);
 
     return response->Record.GetRamBackup();
 }

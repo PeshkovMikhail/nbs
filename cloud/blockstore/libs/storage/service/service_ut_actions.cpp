@@ -476,7 +476,7 @@ Y_UNIT_TEST_SUITE(TServiceActionsTest)
         );
 
         NProto::TBackupDiskRegistryStateRequest request;
-        request.SetSource(NProto::EBackupDiskRegistryStateSource::RAM);
+        request.SetSource(NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_RAM);
 
         TString buf;
         google::protobuf::util::MessageToJsonString(request, &buf);
