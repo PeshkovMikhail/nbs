@@ -65,6 +65,7 @@ TBackupDiskRegistryStateActor::TBackupDiskRegistryStateActor(
 void TBackupDiskRegistryStateActor::Bootstrap(const TActorContext& ctx)
 {
     auto request = std::make_unique<TEvDiskRegistry::TEvBackupDiskRegistryStateRequest>();
+    request->Record.SetSource(NProto::EBackupDiskRegistryStateSource::RAM);
 
     if (!google::protobuf::util::JsonStringToMessage(Input, &request->Record).ok()) {
         Error = MakeError(E_ARGUMENT, "Failed to parse input");

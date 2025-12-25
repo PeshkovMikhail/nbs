@@ -24,20 +24,24 @@ void TDiskRegistryActor::HandleBackupDiskRegistryState(
         LogTitle.GetWithTime().c_str(),
         msg->Record.ShortDebugString().c_str(),
         TransactionTimeTracker.GetInflightInfo(GetCycleCount()).c_str());
+    
+    NProto::TBackupDiskRegistryStateResponse record;
+    if (msg->Record.GetSource() != NProto::EBackupDiskRegistryStateSource::LOCAL_DB) {
 
-    if (!msg->Record.GetBackupLocalDB()) {
-        auto response = std::make_unique<
-            TEvDiskRegistry::TEvBackupDiskRegistryStateResponse>();
-        *response->Record.MutableBackupFilePath() =
+        *record.MutableBackupFilePath() =
             msg->Record.GetBackupFilePath();
-        *response->Record.MutableBackup() =
+        *record.MutableRamBackup() =
             State->BackupState();
-        response->Record.MutableBackup()->MutableConfig()
+        record.MutableRamBackup()->MutableConfig()
             ->SetWritableState(CurrentState != STATE_READ_ONLY);
 
-        NCloud::Reply(ctx, *ev, std::move(response));
-
-        return;
+        if(msg->Record.GetSource() == NProto::EBackupDiskRegistryStateSource::RAM){
+            auto response = std::make_unique<
+                TEvDiskRegistry::TEvBackupDiskRegistryStateResponse>();
+            response->Record = std::move(record);
+            NCloud::Reply(ctx, *ev, std::move(response));
+            return;
+        }
     }
 
     auto requestInfo = CreateRequestInfo(
@@ -48,7 +52,8 @@ void TDiskRegistryActor::HandleBackupDiskRegistryState(
     ExecuteTx<TBackupDiskRegistryState>(
         ctx,
         std::move(requestInfo),
-        msg->Record.GetBackupFilePath());
+        msg->Record.GetBackupFilePath(),
+        record);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,6 +87,8 @@ void TDiskRegistryActor::CompleteBackupDiskRegistryState(
 {
     auto response = std::make_unique<
         TEvDiskRegistry::TEvBackupDiskRegistryStateResponse>();
+
+    response->Record = std::move(args.Response);
     *response->Record.MutableBackupFilePath() = args.BackupFilePath;
 
     // if new fields are added to TDiskRegistryStateSnapshot
@@ -124,7 +131,7 @@ void TDiskRegistryActor::CompleteBackupDiskRegistryState(
         src.clear();
     };
 
-    auto& backup = *response->Record.MutableBackup();
+    auto& backup = *response->Record.MutableLocalDbBackup();
 
     for (auto & [uuid, diskId]: dirtyDevices) {
         backup.AddOldDirtyDevices(uuid);

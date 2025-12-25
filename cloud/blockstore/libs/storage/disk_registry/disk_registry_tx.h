@@ -861,13 +861,16 @@ struct TTxDiskRegistry
         : TLoadState
     {
         const TString BackupFilePath;
+        NProto::TBackupDiskRegistryStateResponse Response;
 
         TBackupDiskRegistryState() = default;
         TBackupDiskRegistryState(
                 TRequestInfoPtr requestInfo,
-                TString backupFilePath)
+                TString backupFilePath,
+                NProto::TBackupDiskRegistryStateResponse response)
             : TLoadState{std::move(requestInfo)}
             , BackupFilePath{std::move(backupFilePath)}
+            , Response{std::move(response)}
         {}
     };
 

@@ -36,10 +36,9 @@ constexpr ui64 LocalDeviceSize = 99999997952;   // ~ 93.13 GiB
 
 auto GetBackup(TDiskRegistryClient& dr) -> NProto::TDiskRegistryStateBackup
 {
-    auto response = dr.BackupDiskRegistryState(false   // localDB
-    );
+    auto response = dr.BackupDiskRegistryState(NProto::LOCAL_DB);
 
-    return response->Record.GetBackup();
+    return response->Record.GetLocalDbBackup();
 }
 
 auto GetDirtyDeviceCount(TDiskRegistryClient& dr)

@@ -1347,13 +1347,19 @@ message TFinishMigrationResponse
 ////////////////////////////////////////////////////////////////////////////////
 // Backup Disk Registry state
 
-message TBackupDiskRegistryStateRequest
+enum EBackupDiskRegistryStateSource
 {
+    RAM = 0;
+    LOCAL_DB = 1;
+    BOTH = 2;
+}
+message TBackupDiskRegistryStateRequest
+{   
     // Optional request headers.
     THeaders Headers = 1;
 
-    // Backup local DB instead of memory state.
-    bool BackupLocalDB = 2;
+    // Source of Disk Registry state backup
+    EBackupDiskRegistryStateSource Source = 2;
 
     // File to save backup file.
     string BackupFilePath = 3;
@@ -1365,10 +1371,11 @@ message TBackupDiskRegistryStateResponse
     NCloud.NProto.TError Error = 1;
 
     // Disk Regsitry state backup
-    TDiskRegistryStateBackup Backup = 2;
+    optional TDiskRegistryStateBackup RamBackup = 2;
+    optional TDiskRegistryStateBackup LocalDbBackup = 3;
 
     // File to save backup file.
-    string BackupFilePath = 3;
+    string BackupFilePath = 4;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

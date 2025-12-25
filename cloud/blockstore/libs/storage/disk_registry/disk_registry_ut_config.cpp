@@ -435,10 +435,20 @@ Y_UNIT_TEST_SUITE(TDiskRegistryTest)
         auto disk3 = allocateDisk("disk-3", "pg1");
         auto disk4 = allocateDisk("disk-4", "pg2");
 
-        auto makeBackup = [&] (bool localDB) {
+        auto makeBackup = [&](auto source)
+        {
             NProto::TDiskRegistryStateBackup backup;
-            auto response = diskRegistry.BackupDiskRegistryState(localDB);
-            backup.Swap(response->Record.MutableBackup());
+            auto response = diskRegistry.BackupDiskRegistryState(source);
+            switch (source) {
+                case NProto::LOCAL_DB:
+                    backup.Swap(response->Record.MutableLocalDbBackup());
+                    break;
+                case NProto::RAM:
+                    backup.Swap(response->Record.MutableRamBackup());
+                    break;
+                default:
+                    break;
+            }
 
             return backup;
         };
@@ -489,8 +499,8 @@ Y_UNIT_TEST_SUITE(TDiskRegistryTest)
             UNIT_ASSERT_VALUES_EQUAL_C("agent-3", knownAgents[2].GetAgentId(), name);
         };
 
-        auto backupState = makeBackup(false);
-        auto backupDB = makeBackup(true);
+        auto backupState = makeBackup(NProto::RAM);
+        auto backupDB = makeBackup(NProto::LOCAL_DB);
 
         validate(backupState, "state backup");
         validate(backupDB, "local DB backup");
