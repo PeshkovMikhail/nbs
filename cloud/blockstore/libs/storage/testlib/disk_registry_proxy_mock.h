@@ -809,7 +809,7 @@ private:
     {
         auto response = std::make_unique<TEvDiskRegistry::TEvBackupDiskRegistryStateResponse>();
 
-        auto& backup = *response->Record.MutableRamBackup();
+        auto& backup = *response->Record.MutableBackup();
 
         for (const auto& [id, disk]: State->Disks) {
             auto& config = *backup.AddDisks();

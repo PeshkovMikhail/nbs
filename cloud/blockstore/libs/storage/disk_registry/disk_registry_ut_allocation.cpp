@@ -38,7 +38,7 @@ auto GetBackup(TDiskRegistryClient& dr) -> NProto::TDiskRegistryStateBackup
 {
     auto response = dr.BackupDiskRegistryState(NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_LOCAL_DB);
 
-    return response->Record.GetLocalDbBackup();
+    return response->Record.GetBackup();
 }
 
 auto GetDirtyDeviceCount(TDiskRegistryClient& dr)

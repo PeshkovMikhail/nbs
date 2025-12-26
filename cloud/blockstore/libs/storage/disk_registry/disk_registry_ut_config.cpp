@@ -439,18 +439,7 @@ Y_UNIT_TEST_SUITE(TDiskRegistryTest)
         {
             NProto::TDiskRegistryStateBackup backup;
             auto response = diskRegistry.BackupDiskRegistryState(source);
-            switch (source) {
-                case NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_LOCAL_DB:
-                    backup.Swap(response->Record.MutableLocalDbBackup());
-                    break;
-                case NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_RAM:
-                    backup.Swap(response->Record.MutableRamBackup());
-                    break;
-                default:
-                    break;
-            }
-
-            return backup;
+            return response->Record.GetBackup();
         };
 
         auto validate = [](auto& backup, const TString& name) {

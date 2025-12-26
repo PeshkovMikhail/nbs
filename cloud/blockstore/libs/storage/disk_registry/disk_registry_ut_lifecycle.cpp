@@ -200,8 +200,9 @@ Y_UNIT_TEST_SUITE(TDiskRegistryTest)
             {
                 if (event->GetTypeRewrite() == TEvDiskRegistry::EvBackupDiskRegistryStateResponse) {
                     auto& record = event->Get<TEvDiskRegistry::TEvBackupDiskRegistryStateResponse>()->Record;
-                    auto& disks = record.MutableRamBackup()->MutableDisks()->at(0);
-                    disks.SetReplicaCount(disks.GetReplicaCount()+1);
+                    auto& agent = record.MutableBothSourcesBackup()->MutableRamBackup()->MutableAgents()->at(0);
+                    auto& device = agent.MutableDevices()->at(0);
+                    device.SetBlockSize(2*device.GetBlockSize());
                 }
                 return TTestActorRuntime::DefaultObserverFunc(event);
             });

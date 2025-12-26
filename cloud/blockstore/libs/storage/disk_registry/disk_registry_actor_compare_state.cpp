@@ -19,6 +19,7 @@ private:
     TRequestInfoPtr RequestInfo;
 
     TString DiffReport;
+
 public:
     TCompareActor(
         TChildLogTitle logTitle,
@@ -28,9 +29,7 @@ public:
     void Bootstrap(const TActorContext& ctx);
 
 private:
-    void ReplyAndDie(
-        const TActorContext& ctx,
-        const NProto::TError& error);
+    void ReplyAndDie(const TActorContext& ctx, const NProto::TError& error);
 
 private:
     STFUNC(StateCompare);
@@ -69,11 +68,10 @@ void TCompareActor::ReplyAndDie(
     const NProto::TError& error)
 {
     auto response = std::make_unique<
-        TEvDiskRegistry::TEvCompareDiskRegistryStateWithLocalDbResponse>(
-        error);
+        TEvDiskRegistry::TEvCompareDiskRegistryStateWithLocalDbResponse>(error);
 
     response->Record.SetDiffers(DiffReport);
-    
+
     NCloud::Reply(ctx, *RequestInfo, std::move(response));
     Die(ctx);
 }
@@ -97,7 +95,11 @@ void TCompareActor::HandleBackupDiskRegistryStateResponse(
 
     google::protobuf::util::MessageDifferencer diff;
 
+    DiffReport.clear();
     diff.ReportDifferencesToString(&DiffReport);
+    diff.set_report_ignores(false);
+    diff.set_report_moves(false);
+
     google::protobuf::util::DefaultFieldComparator comparator;
     comparator.set_float_comparison(
         google::protobuf::util::DefaultFieldComparator::FloatComparison::
@@ -106,8 +108,35 @@ void TCompareActor::HandleBackupDiskRegistryStateResponse(
 
     diff.IgnoreField(
         NProto::TAgentConfig::descriptor()->FindFieldByName("UnknownDevices"));
+    // diff.IgnoreField(NProto::TDiskRegistryConfig::descriptor()->FindFieldByName("WritableState"));
+    if (msg->Record.BackupKind_case() !=
+        NProto::TBackupDiskRegistryStateResponse::kBothSourcesBackup)
+    {
+        ReplyAndDie(ctx, MakeTabletIsDeadError(E_REJECTED, __LOCATION__));
+    }
 
-    diff.Compare(msg->Record.GetRamBackup(), msg->Record.GetLocalDbBackup());
+    const auto* descriptor = NProto::TDiskRegistryStateBackup::descriptor();
+    diff.IgnoreField(descriptor->FindFieldByName("OldDirtyDevices"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("Disks"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("PlacementGroups"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("Agents"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("Sessions"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("DiskStateChanges"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("BrokenDisks"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("DisksToNotify"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("DisksToCleanup"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("ErrorNotifications"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("OutdatedVolumeConfigs"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("OldSuspendedDevices"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("DirtyDevices"));
+    diff.TreatAsSmartSet(
+        descriptor->FindFieldByName("AutomaticallyReplacedDevices"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("UserNotifications"));
+    diff.TreatAsSmartSet(descriptor->FindFieldByName("SuspendedDevices"));
+
+    diff.Compare(
+        msg->Record.GetBothSourcesBackup().GetRamBackup(),
+        msg->Record.GetBothSourcesBackup().GetLocalDbBackup());
 
     LOG_INFO(
         ctx,

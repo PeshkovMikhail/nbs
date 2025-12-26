@@ -373,7 +373,7 @@ void TDiskRegistryActor::HandleBackupDiskRegistryStateResponse(
         const TString filePath = msg->Record.GetBackupFilePath();
         if (!filePath.empty()) {
             try {
-                if (!msg->Record.GetLocalDbBackup().GetConfig().ByteSize()) {
+                if (!msg->Record.GetBackup().GetConfig().ByteSize()) {
                     LOG_WARN(
                         ctx, TBlockStoreComponents::DISK_REGISTRY,
                         "The backup file is not created "

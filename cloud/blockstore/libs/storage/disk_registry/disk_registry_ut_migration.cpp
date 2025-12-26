@@ -1704,7 +1704,7 @@ Y_UNIT_TEST_SUITE(TDiskRegistryTest)
 
         {
             auto response = diskRegistry.BackupDiskRegistryState(NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_LOCAL_DB);
-            auto& backup = *response->Record.MutableLocalDbBackup();
+            auto& backup = *response->Record.MutableBackup();
             UNIT_ASSERT_VALUES_EQUAL(1, backup.DisksSize());
             UNIT_ASSERT_VALUES_EQUAL("disk-1", backup.GetDisks(0).GetDiskId());
 
@@ -1804,7 +1804,7 @@ Y_UNIT_TEST_SUITE(TDiskRegistryTest)
             runtime->DispatchEvents({}, 10ms);
 
             auto response = diskRegistry.BackupDiskRegistryState(NProto::BACKUP_DISK_REGISTRY_STATE_SOURCE_RAM);
-            if (response->Record.MutableRamBackup()->DirtyDevicesSize() == 0) {
+            if (response->Record.MutableBackup()->DirtyDevicesSize() == 0) {
                 break;
             }
         }
