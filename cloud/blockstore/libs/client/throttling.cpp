@@ -145,13 +145,18 @@ public:
             CostPerIO(
                 CalculateThrottlerC1(maxIops, maxBandwidth),
                 CalculateThrottlerC2(maxIops, maxBandwidth),
-                byteCount)
-        );
+                byteCount),
+            mediaKind);
     }
 
     double CalculateCurrentSpentBudgetShare(TInstant ts) const override
     {
         return Bucket.CalculateCurrentSpentBudgetShare(ts);
+    }
+
+    TSpentBudget CalculateCurrentSpentBudget() override
+    {
+        return Bucket.CalculateCurrentSpentBudget();
     }
 };
 

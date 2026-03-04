@@ -53,6 +53,11 @@ public:
 
         return PostponeTimeout.GetValue() / 1e6;
     }
+
+    TSpentBudget CalculateCurrentSpentBudget() override
+    {
+        return TSpentBudget({});
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

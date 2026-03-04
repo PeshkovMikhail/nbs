@@ -3,6 +3,7 @@
 #include <cloud/blockstore/libs/diagnostics/quota_metrics.h>
 
 #include <cloud/storage/core/libs/common/timer.h>
+#include <cloud/storage/core/libs/common/media.h>
 #include <cloud/storage/core/libs/diagnostics/max_calculator.h>
 
 #include <library/cpp/monlib/dynamic_counters/counters.h>
@@ -40,7 +41,8 @@ private:
     TMaxCalculator<DEFAULT_BUCKET_COUNT> MaxCalc;
     TQuotaInfo Total;
     TMap<TQuotaKey, TQuotaInfo> QuotaContainer;
-
+    TMap<NProto::EStorageMediaKind, TQuotaInfo> QuotaPerMediaKind;
+    TMap<TString, TMaxCalculator<DEFAULT_BUCKET_COUNT>> MaxCalcPerMediaKind;
 public:
     TThrottlerMetrics(
             ITimerPtr timer,
@@ -55,7 +57,7 @@ public:
         const TString& instanceId) override;
 
     void Trim(TInstant now) override;
-    void UpdateUsedQuota(ui64 quota) override;
+    void UpdateUsedQuota(TSpentBudget quota) override;
     void UpdateMaxUsedQuota() override;
 
 private:
@@ -98,7 +100,21 @@ void TThrottlerMetrics::Register(
         Timer);
 
     if (needToRegister && isInserted) {
-        Total.Metrics.Register(TotalGroup);
+        Total.Metrics.Register(TotalGroup->GetSubgroup("type", "overall"));
+    }
+
+    if (QuotaPerMediaKind.empty()) {
+        ui32 mk = NProto::EStorageMediaKind_MIN;
+        while (mk < NProto::EStorageMediaKind_ARRAYSIZE) {
+            QuotaPerMediaKind.try_emplace(
+                static_cast<NProto::EStorageMediaKind>(mk),
+                TotalGroup->GetSubgroup(
+                    "type",
+                    MediaKindToString(
+                        static_cast<NProto::EStorageMediaKind>(mk))),
+                Timer);
+            ++mk;
+        }
     }
 
     quotaItr->second.MountTime = Timer->Now();
@@ -145,15 +161,19 @@ void TThrottlerMetrics::Trim(TInstant now)
     }
 }
 
-void TThrottlerMetrics::UpdateUsedQuota(ui64 quota)
+void TThrottlerMetrics::UpdateUsedQuota(TSpentBudget quota)
 {
-    MaxCalc.Add(quota);
-    Total.Metrics.UpdateQuota(quota);
+    MaxCalc.Add(quota.Overall);
+    Total.Metrics.UpdateQuota(quota.Overall);
 
     TReadGuard guard(Lock);
 
     for (auto& [_, quotaInfo]: QuotaContainer) {
-        quotaInfo.Metrics.UpdateQuota(quota);
+        quotaInfo.Metrics.UpdateQuota(quota.Overall);
+    }
+
+    for (auto& [mediaKind, quotaInfo]: QuotaPerMediaKind) {
+        quotaInfo.Metrics.UpdateQuota(quota.PerMediaKind[mediaKind]);
     }
 }
 
@@ -206,7 +226,7 @@ public:
         Y_UNUSED(now);
     }
 
-    void UpdateUsedQuota(ui64 quota) override
+    void UpdateUsedQuota(TSpentBudget quota) override
     {
         Y_UNUSED(quota);
     }

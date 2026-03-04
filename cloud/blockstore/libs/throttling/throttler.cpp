@@ -528,12 +528,9 @@ private:
 
     void UpdateUsedQuotaWithScheduler()
     {
-        ui64 quota = 0;
+        TSpentBudget quota({});
         with_lock (ThrottlerLock) {
-            quota = static_cast<ui64>(
-                ThrottlerPolicy->CalculateCurrentSpentBudgetShare(
-                    Timer->Now()) *
-                100.0);
+            quota = ThrottlerPolicy->CalculateCurrentSpentBudget();
         }
         ThrottlerMetrics->UpdateUsedQuota(quota);
         ThrottlerMetrics->UpdateMaxUsedQuota();

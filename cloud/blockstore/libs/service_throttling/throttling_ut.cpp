@@ -52,6 +52,11 @@ public:
 
         return 0.0;
     }
+
+    TSpentBudget CalculateCurrentSpentBudget() override
+    {
+        return TSpentBudget({});
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

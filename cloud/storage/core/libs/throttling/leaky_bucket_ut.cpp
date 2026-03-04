@@ -29,6 +29,12 @@ Y_UNIT_TEST_SUITE(TLeakyBucketTest)
             lb.CalculateCurrentSpentBudgetShare(TInstant::MicroSeconds(nowMcs))\
         );                                                                     \
 // GET_SHARE_AND_CHECK
+#define GET_AND_CHECK(currentShare)                                            \
+        UNIT_ASSERT_VALUES_EQUAL(                                              \
+            currentShare,                                                      \
+            lb.CalculateCurrentSpentBudget()                                   \
+        );                                                                     \
+// GET_SHARE_AND_CHECK
 
     Y_UNIT_TEST(ShouldRegister)
     {
@@ -61,6 +67,38 @@ Y_UNIT_TEST_SUITE(TLeakyBucketTest)
     }
 
     Y_UNIT_TEST(ShouldSpentBudgetShare)
+    {
+        TLeakyBucket lb(100, 200, 200);
+
+        GET_SHARE_AND_CHECK(0, 50'000);          // share = (200 - 200) / 200 = 0
+        REG_AND_CHECK(0, 100'000, 110);          // budget = 200 - 110 = 90
+        GET_SHARE_AND_CHECK(0.5, 200'000);       // share = (200 - (90 + 0.1 * 100)) / 200 = 0.5
+        GET_SHARE_AND_CHECK(0.475, 250'000);     // share = (200 - (90 + 0.15 * 100)) / 200 = 0.475
+        REG_AND_CHECK(0, 500'000, 70);           // budget = 90 + 0.4 * 100 - 70 = 60
+        GET_SHARE_AND_CHECK(0.575, 750'000);     // share = (200 - (60 + 0.25 * 100)) / 200 = 0.575
+        GET_SHARE_AND_CHECK(0, 1'900'000);       // share = (200 - (60 + 1.4 * 100)) / 200 = 0
+        REG_AND_CHECK(0, 2'000'000, 200);        // budget = 60 + 1.4 * 100 - 200 = 0
+        GET_SHARE_AND_CHECK(1, 2'000'000);       // share = (200 - (0 + 0 * 100)) / 200 = 1
+        GET_SHARE_AND_CHECK(0.75, 2'500'000);    // share = (200 - (0 + 0.5 * 100)) = 0.75
+    }
+
+    Y_UNIT_TEST(ShouldSpentBudgetShareWithCustomInitialBudget)
+    {
+        TLeakyBucket lb(100, 200, 10);
+
+        GET_SHARE_AND_CHECK(0.95, 50'000);       // share = (200 - 10) / 200 = 0.95
+        REG_AND_CHECK(100, 100'000, 110);        // budget = 10
+        GET_SHARE_AND_CHECK(0.9, 200'000);       // share = (200 - (10 + 0.1 * 100)) / 200 = 0.9
+        GET_SHARE_AND_CHECK(0.875, 250'000);     // share = (200 - (10 + 0.15 * 100)) / 200 = 0.875
+        REG_AND_CHECK(20, 500'000, 70);          // budget = 10 + 0.4 * 100 = 50
+        GET_SHARE_AND_CHECK(0.625, 750'000);     // share = (200 - (50 + 0.25 * 100)) / 200 = 0.625
+        GET_SHARE_AND_CHECK(0.05, 1'900'000);    // share = (200 - (50 + 1.4 * 100)) / 200 = 0.05
+        REG_AND_CHECK(0, 2'000'000, 200);        // budget = 50 + 1.5 * 100 - 200 = 0
+        GET_SHARE_AND_CHECK(1.0, 2'000'000);     // share = (200 - (0 + 0 * 100)) / 200 = 1
+        GET_SHARE_AND_CHECK(0.75, 2'500'000);    // share = (200 - (0 + 0.5 * 100)) / 200 = 0.75
+    }
+
+    Y_UNIT_TEST(ShouldSpentBudget)
     {
         TLeakyBucket lb(100, 200, 200);
 

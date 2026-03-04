@@ -383,7 +383,10 @@ struct TVolumeThrottlingPolicy::TImpl
             return TDuration::Zero();
         }
 
-        auto d = Bucket.Register(ts, GetRequestCost(requestInfo));
+        auto d = Bucket.Register(
+            ts,
+            GetRequestCost(requestInfo),
+            ::NCloud::NProto::EStorageMediaKind::STORAGE_MEDIA_SSD);
         if (!d.GetValue()) {
             // 0 is special value which disables throttling by byteCount
             const auto opType = static_cast<EOpType>(requestInfo.OpType);

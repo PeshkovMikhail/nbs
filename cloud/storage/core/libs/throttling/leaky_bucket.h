@@ -1,5 +1,8 @@
 #pragma once
 
+#include <util/generic/hash.h>
+
+#include <cloud/storage/core/protos/media.pb.h>
 #include "helpers.h"
 
 #include <util/datetime/base.h>
@@ -7,6 +10,26 @@
 #include <cmath>
 
 namespace NCloud {
+
+////////////////////////////////////////////////////////////////////////////////
+
+struct TSpentBudget
+{
+    THashMap<NProto::EStorageMediaKind, ui64> PerMediaKind;
+    ui64 Overall;
+
+    explicit TSpentBudget(
+        const THashMap<NProto::EStorageMediaKind, double>& perMediaKind)
+    {
+        double overall = 0;
+        for (auto [key, val]: perMediaKind) {
+            PerMediaKind[key] = val * 100;
+            overall += val;
+        }
+
+        Overall = Min(overall, 1.0) * 100;
+    }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -100,6 +123,8 @@ private:
     double Alpha;           // Boost bucket refill rate
     TLeakyBucket Boost;
 
+    THashMap<NProto::EStorageMediaKind, double> UsedQuota;
+
 public:
     TBoostedTimeBucket(
             TDuration burstTime,
@@ -134,9 +159,12 @@ public:
     }
 
 public:
-    TDuration Register(TInstant ts, TDuration update)
+    TDuration Register(TInstant ts, TDuration update, NProto::EStorageMediaKind mediaKind)
     {
         auto diff1 = Standard.Register(ts, update.MicroSeconds() / 1e6);
+
+        UsedQuota[mediaKind] += update.MicroSeconds() / 1e6;
+
         if (diff1 == 0) {
             return TDuration::Zero();
         }
@@ -192,6 +220,13 @@ public:
 
     TDuration GetCurrentBoostBudget() const {
         return TDuration::MilliSeconds(Boost.Budget() * 1'000.);
+    }
+
+    TSpentBudget CalculateCurrentSpentBudget()
+    {
+        auto usedQuota = UsedQuota;
+        UsedQuota.clear();
+        return TSpentBudget(usedQuota);
     }
 };
 
